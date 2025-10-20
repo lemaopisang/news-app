@@ -5,26 +5,32 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 
 import 'package:news_app/main.dart';
+import 'package:news_app/routes/app_pages.dart';
+import 'package:news_app/views/home_view.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  setUp(() {
+    Get.testMode = true;
+  });
+
+  testWidgets('MyApp configures GetMaterialApp correctly', (tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final getMaterialApp =
+        tester.widget<GetMaterialApp>(find.byType(GetMaterialApp));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    expect(getMaterialApp.initialRoute, AppPages.initial);
+    expect(getMaterialApp.getPages, isNotNull);
+    expect(getMaterialApp.getPages, isNotEmpty);
+    expect(getMaterialApp.initialBinding, isNotNull);
+
+    await tester.pump(const Duration(seconds: 4));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(HomeView), findsOneWidget);
   });
 }
