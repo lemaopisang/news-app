@@ -64,7 +64,7 @@ class AppFooter extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'News App',
+                          'The News',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -89,18 +89,18 @@ class AppFooter extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: const [
                     _FeatureBadge(
                       icon: Icons.speed_rounded,
                       label: 'Fast',
                     ),
-                    const SizedBox(width: 12),
                     _FeatureBadge(
                       icon: Icons.verified_rounded,
                       label: 'Reliable',
                     ),
-                    const SizedBox(width: 12),
                     _FeatureBadge(
                       icon: Icons.security_rounded,
                       label: 'Secure',
@@ -110,22 +110,37 @@ class AppFooter extends StatelessWidget {
                 const SizedBox(height: 32),
 
                 // Stats
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _StatItem(
-                      number: '1000+',
-                      label: 'Articles Daily',
-                    ),
-                    _StatItem(
-                      number: '50+',
-                      label: 'Sources',
-                    ),
-                    _StatItem(
-                      number: '24/7',
-                      label: 'Updates',
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const List<Widget> stats = <Widget>[
+                      _StatItem(
+                        number: '1000+',
+                        label: 'Articles Daily',
+                      ),
+                      _StatItem(
+                        number: '50+',
+                        label: 'Sources',
+                      ),
+                      _StatItem(
+                        number: '24/7',
+                        label: 'Updates',
+                      ),
+                    ];
+
+                    if (constraints.maxWidth >= 360) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: stats,
+                      );
+                    }
+
+                    return Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 24,
+                      runSpacing: 16,
+                      children: stats,
+                    );
+                  },
                 ),
                 const SizedBox(height: 32),
 
@@ -167,7 +182,7 @@ class AppFooter extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        '© 2025 News App. All rights reserved.',
+                        '© 2025 The News. All rights reserved.',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: AppColors.textTertiary,
                         ),
@@ -188,38 +203,6 @@ class AppFooter extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _FooterLink extends StatelessWidget {
-  final String label;
-  final IconData icon;
-
-  const _FooterLink({
-    required this.label,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 18,
-          color: AppColors.primary,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -246,6 +229,7 @@ class _FeatureBadge extends StatelessWidget {
         ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,

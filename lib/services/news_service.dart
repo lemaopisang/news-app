@@ -51,7 +51,7 @@ class NewsService {
     try {
       final Map<String, String> queryParams = {
         'apiKey': _apiKey,
-        'q': query,
+        'qInTitle': query,
         'page': page.toString(),
         'pageSize': pageSize.toString(),
       };

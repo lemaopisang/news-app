@@ -312,7 +312,12 @@ class NewsDetailView extends StatelessWidget {
     // Create a simple share message
     final String shareMessage = 'Check out this article:\n\n${article.title}\n${article.description}\n\nRead more: ${article.url}';
     // Use share_plus to share the article
-    Share.share(shareMessage);
+    SharePlus.instance.share(
+      ShareParams(
+        text: shareMessage,
+        subject: article.title,
+      ),
+    );
   }
 
   void _copyLink(NewsArticle article) {

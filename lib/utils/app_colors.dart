@@ -80,3 +80,52 @@ class AppColors {
   static const Color onSurface = textPrimary;
   static const Color onError = textOnDark;
 }
+
+extension ColorValuesCompat on Color {
+  Color withValues({
+    double? alpha,
+    double? red,
+    double? green,
+    double? blue,
+  }) {
+    if (alpha == null && red == null && green == null && blue == null) {
+      return this;
+    }
+
+  final int argb = toARGB32();
+    final int currentRed = (argb >> 16) & 0xFF;
+    final int currentGreen = (argb >> 8) & 0xFF;
+    final int currentBlue = argb & 0xFF;
+    final double currentAlphaUnit = ((argb >> 24) & 0xFF) / 255.0;
+
+    final int r = red != null ? _componentFromUnit(red) : currentRed;
+    final int g = green != null ? _componentFromUnit(green) : currentGreen;
+    final int b = blue != null ? _componentFromUnit(blue) : currentBlue;
+    final double aUnit = alpha != null ? _clampUnit(alpha) : currentAlphaUnit;
+
+    return Color.fromARGB(
+      (aUnit * 255).round(),
+      r,
+      g,
+      b,
+    );
+  }
+}
+
+double _clampUnit(double value) {
+  if (value.isNaN) {
+    return 0;
+  }
+  if (value < 0) {
+    return 0;
+  }
+  if (value > 1) {
+    return 1;
+  }
+  return value;
+}
+
+int _componentFromUnit(double value) {
+  final double safe = _clampUnit(value);
+  return (safe * 255).round();
+}

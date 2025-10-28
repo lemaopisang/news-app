@@ -32,14 +32,20 @@ class HomeView extends GetView<NewsController> {
           return _buildEmptyState(context);
         }
 
-    final articles = controller.articles;
-    final int visibleCount = controller.visibleCount;
-    final List<NewsArticle> visibleArticles = visibleCount > 0
-      ? articles.take(visibleCount).toList()
-      : <NewsArticle>[];
+    final List<NewsArticle> articles = controller.articles;
+    final int requestedCount = controller.visibleCount;
+    final int safeVisibleCount = articles.isEmpty
+      ? 0
+      : requestedCount <= 0
+        ? 1
+        : (requestedCount > articles.length
+          ? articles.length
+          : requestedCount);
+    final List<NewsArticle> visibleArticles =
+      articles.take(safeVisibleCount).toList();
 
     if (visibleArticles.isEmpty) {
-      return const SafeArea(child: LoadingShimmer());
+      return _buildEmptyState(context);
     }
 
     final NewsArticle headline = visibleArticles.first;
@@ -100,21 +106,33 @@ class HomeView extends GetView<NewsController> {
                   ),
                   actions: [
                     Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: Center(
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundDark,
+                      padding: const EdgeInsets.only(right: 8),
+                      child: IconButton(
+                        tooltip: 'Notifications',
+                        splashRadius: 24,
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.backgroundDark,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
-                            Icons.notifications_none_rounded,
-                            color: AppColors.textPrimary,
-                            size: 22,
-                          ),
                         ),
+                        icon: Icon(
+                          Icons.notifications_none_rounded,
+                          color: AppColors.textPrimary,
+                          size: 22,
+                        ),
+                        onPressed: () {
+                          Get.snackbar(
+                            'Notifications',
+                            "You're all caught up!",
+                            snackPosition: SnackPosition.TOP,
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: 0.9),
+                            colorText: Colors.white,
+                            margin: const EdgeInsets.all(16),
+                            borderRadius: 14,
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -127,6 +145,16 @@ class HomeView extends GetView<NewsController> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (controller.isOffline)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 250),
+                              opacity: controller.isOffline ? 1 : 0,
+                              child: _buildOfflineBanner(context),
+                            ),
+                          ),
+
                         // Search Bar
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -160,20 +188,80 @@ class HomeView extends GetView<NewsController> {
                                   ),
                                 ),
                                 Expanded(
-                                  child: TextField(
-                                    decoration: InputDecoration(
-                                      hintText: 'Search news...',
-                                      hintStyle: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                        color: AppColors.textTertiary,
-                                      ),
-                                      border: InputBorder.none,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                    ),
-                                    style: theme.textTheme.bodyMedium,
+                                  child: ValueListenableBuilder<
+                                      TextEditingValue>(
+                                    valueListenable:
+                                        controller.searchController,
+                                    builder: (context, value, _) {
+                                      final List<Widget> suffixActions = [];
+
+                                      if (controller.isSearching &&
+                                          controller.isLoading) {
+                                        suffixActions.add(
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 12,
+                                            ),
+                                            child: SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child:
+                                                  CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+
+                                      if (value.text.isNotEmpty) {
+                                        suffixActions.add(
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.close_rounded,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                            splashRadius: 20,
+                                            tooltip: 'Clear search',
+                                            onPressed: () =>
+                                                controller.clearSearch(),
+                                          ),
+                                        );
+                                      }
+
+                                      return TextField(
+                                        controller:
+                                            controller.searchController,
+                                        onChanged: controller.onSearchChanged,
+                                        onSubmitted: (query) {
+                                          FocusScope.of(context).unfocus();
+                                          controller.submitSearch(query);
+                                        },
+                                        textInputAction: TextInputAction.search,
+                                        autocorrect: false,
+                                        decoration: InputDecoration(
+                                          hintText: 'Search news...',
+                                          hintStyle: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                            color: AppColors.textTertiary,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          suffixIcon: suffixActions.isEmpty
+                                              ? null
+                                              : Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: suffixActions,
+                                                ),
+                                        ),
+                                        style: theme.textTheme.bodyMedium,
+                                      );
+                                    },
                                   ),
                                 ),
                               ],
@@ -309,11 +397,11 @@ class HomeView extends GetView<NewsController> {
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
-                      child: controller.isLoadingMore
-                          ? _buildLoadMoreLoader(context)
-                          : controller.hasMore
-                              ? _buildLoadMoreButton(context)
-                              : _buildEndOfFeedBadge(context),
+            child: controller.isLoadingMore
+              ? _buildLoadMoreLoader(context)
+              : controller.hasMore
+                ? _buildLoadMoreButton(context)
+                : _buildEndOfFeedBadge(context),
                     ),
                   ),
                 ),
@@ -445,12 +533,15 @@ class HomeView extends GetView<NewsController> {
   }
 
   Widget _buildLoadMoreButton(BuildContext context) {
+    final bool offline = controller.isOffline;
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
-        icon: const Icon(Icons.add_circle_outline_rounded),
-        onPressed: () => Get.find<NewsController>().loadMoreArticles(),
-        label: const Text('Load more'),
+        icon: Icon(
+          offline ? Icons.wifi_off_rounded : Icons.add_circle_outline_rounded,
+        ),
+        onPressed: controller.loadMoreArticles,
+        label: Text(offline ? 'Retry connection' : 'Load more'),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           textStyle: Theme.of(context)
@@ -535,6 +626,73 @@ class HomeView extends GetView<NewsController> {
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFf97316), Color(0xFFef4444)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.wifi_off_rounded,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You\'re offline',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'We\'ll keep your latest headlines here. Reconnect to refresh.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+            ),
+            onPressed: controller.refreshNews,
+            child: const Text('Retry'),
           ),
         ],
       ),
